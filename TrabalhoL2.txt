@@ -53,13 +53,14 @@ type valor =
   | VClos  of ident * expr * renv
   | VRclos of ident * ident * expr * renv
   | Vl of ident
+  | VSkip
 and 
   renv = (ident * valor) list
     
 let mem = (ident * valor) list
     
     
-(* funções polimórficas para ambientes *)
+(* funções polimórficas para ambientes e memória *)
 
 let rec lookup a k =
   match a with
@@ -69,11 +70,18 @@ let rec lookup a k =
 let rec update a k i =
   (k,i) :: a   
 
+let rec assign m i v =
+  match a with
+  [] -> None (*qlqr coisa so retornar a memoria*)
+  | (i_mem,v_mem) :: tl -> if (i=i_mem) then Some ((i, v) :: m) else assign tl i v
+
 (* exceções que não devem ocorrer  *)
 
 exception BugParser
   
 exception BugTypeInfer
+
+exception EvalError of string
   
   (**+++++++++++++++++++++++++++++++++++++++++*)
 (*         INFERÊNCIA DE TIPOS              *)
@@ -275,6 +283,13 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
   | LetRec(f,TyFn(t1,t2),Fn(x,tx,e1), e2) when t1 = tx ->
       let renv'= update renv f (VRclos(f,x,e1,renv))
       in eval renv' e2 
+
+  | Asg(e1,e2) ->
+      let l = eval mem renv e1
+      in let v = eval mem renv e2
+      in (match assign mem l v with
+              Some m -> Skip
+            | None -> raise(EvalError "Identificador não alocado na memória"))   
         
   | LetRec _ -> raise BugParser
                   
