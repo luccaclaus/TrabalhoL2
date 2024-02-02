@@ -52,12 +52,13 @@ type valor =
   | VPair of valor * valor
   | VClos  of ident * expr * renv
   | VRclos of ident * ident * expr * renv
-  | Vl of ident
-  | VSkip
+  | Vl of expr
+  | VSkip 
+  | VNull
 and 
   renv = (ident * valor) list
     
-let mem = (ident * valor) list
+type mem = (valor * valor) list
     
     
 (* funções polimórficas para ambientes e memória *)
@@ -71,8 +72,8 @@ let rec update a k i =
   (k,i) :: a   
 
 let rec assign m i v =
-  match a with
-  [] -> None (*qlqr coisa so retornar a memoria*)
+  match m with
+    [] -> None (*qlqr coisa so retornar a memoria*)
   | (i_mem,v_mem) :: tl -> if (i=i_mem) then Some ((i, v) :: m) else assign tl i v
 
 (* exceções que não devem ocorrer  *)
@@ -234,67 +235,84 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
        | None -> raise BugTypeInfer)
       
   | Binop(oper,e1,e2) ->
-      let v1 = eval renv e1 in
-      let v2 = eval renv e2 in
+      let v1 = eval mem renv e1 in
+      let v2 = eval mem renv e2 in
       compute oper v1 v2
 
   | Pair(e1,e2) ->
-      let v1 = eval renv e1 in
-      let v2 = eval renv e2
+      let v1 = eval mem renv e1 in
+      let v2 = eval mem renv e2
       in VPair(v1,v2)
 
   | Fst e ->
-      (match eval renv e with
+      (match eval mem renv e with
        | VPair(v1,_) -> v1
        | _ -> raise BugTypeInfer)
 
   | Snd e ->
-      (match eval renv e with
+      (match eval mem renv e with
        | VPair(_,v2) -> v2
        | _ -> raise BugTypeInfer)
 
 
   | If(e1,e2,e3) ->
-      (match eval renv e1 with
-         VTrue  -> eval renv e2
-       | VFalse -> eval renv e3
+      (match eval mem renv e1 with
+         VTrue  -> eval mem renv e2
+       | VFalse -> eval mem renv e3
        | _ -> raise BugTypeInfer )
 
   | Fn (x,_,e1) ->  VClos(x,e1,renv)
 
   | App(e1,e2) ->
-      let v1 = eval renv e1 in
-      let v2 = eval renv e2 in
+      let v1 = eval mem renv e1 in
+      let v2 = eval mem renv e2 in
       (match v1 with
          VClos(x,ebdy,renv') ->
            let renv'' = update renv' x v2
-           in eval renv'' ebdy
+           in eval mem renv'' ebdy
 
        | VRclos(f,x,ebdy,renv') ->
            let renv''  = update renv' x v2 in
            let renv''' = update renv'' f v1
-           in eval renv''' ebdy
+           in eval mem renv''' ebdy
        | _ -> raise BugTypeInfer)
 
   | Let(x,_,e1,e2) ->
-      let v1 = eval renv e1
-      in eval (update renv x v1) e2
+      let v1 = eval mem renv e1
+      in eval mem (update renv x v1) e2
 
   | LetRec(f,TyFn(t1,t2),Fn(x,tx,e1), e2) when t1 = tx ->
       let renv'= update renv f (VRclos(f,x,e1,renv))
-      in eval renv' e2 
+      in eval mem renv' e2 
+        
+  | LetRec _ -> raise BugParser 
 
   | Asg(e1,e2) ->
       let l = eval mem renv e1
       in let v = eval mem renv e2
-      in (match assign mem l v with
-              Some m -> Skip
-            | None -> raise(EvalError "Identificador não alocado na memória"))   
+      in (match (assign mem l v) with
+            Some m -> VSkip
+          | None -> raise(EvalError "Identificador não alocado na memória"))
         
-  | LetRec _ -> raise BugParser
-                  
-                  
-                  
+  | Dref(e1) -> 
+      let l = eval mem renv e1 in 
+      (match lookup mem l with
+         Some i -> i
+       | None -> raise(EvalError "o endereço buscado não está alocado na memória"))
+      
+  | Seq(e1,e2) -> 
+      let v1 = eval mem renv e1 in 
+      if (v1 = VSkip) then eval mem renv e2 
+      else raise(EvalError "A primeira expressão não foi corretamente avaliada para skip")
+          
+  | New(e1) ->
+      let l = eval mem renv e1 in 
+      if (lookup mem l) = None then VSkip (* tem que arrumar a lógica de alocacao de endereco aqui *)
+      else raise (EvalError "O endereço em questão já está alocado na memória")
+      
+  | Skip -> VSkip
+      
+
                   
 (* função auxiliar que converte tipo para string *)
 
@@ -322,7 +340,7 @@ let rec vtos (v: valor) : string =
 let int_bse (e:expr) : unit =
   try
     let t = typeinfer [] e in
-    let v = eval [] e
+    let v = eval [] [] e
     in  print_string ((vtos v) ^ " : " ^ (ttos t))
   with
     TypeError msg ->  print_string ("erro de tipo - " ^ msg)
