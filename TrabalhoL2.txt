@@ -319,6 +319,13 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
                 update mem l v; l (* retorna l *)
       
   | Skip -> VSkip
+
+  | Whl(e1,e2) ->
+      let e1' = eval mem renv e1 in
+      if e1' then (eval mem renv e2); Whl(e1,e2) 
+      else Skip
+        
+
       
 
                   
