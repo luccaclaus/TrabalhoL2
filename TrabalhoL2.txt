@@ -315,7 +315,7 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
       let v = eval mem renv e1 in
       (let l = (match mem with
                   [] -> 0
-                | addr :: _ -> addr + 1)) in 
+                | (addr :: _) :: _ -> addr + 1)) in 
                 update mem l v; l (* retorna l *)
       
   | Skip -> VSkip
@@ -323,12 +323,9 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
   | Whl(e1,e2) ->
       let e1' = eval mem renv e1 in
       if e1' then (eval mem renv e2); Whl(e1,e2) 
-      else Skip
-        
+      else Skip              
 
-      
-
-                  
+            
 (* função auxiliar que converte tipo para string *)
 
 let rec ttos (t:tipo) : string =
