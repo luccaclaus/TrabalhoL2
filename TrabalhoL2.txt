@@ -287,7 +287,7 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
         
   | LetRec _ -> raise BugParser 
 
-  | Asg(e1,e2) ->
+  | Asg(e1,e2) -> (* altera a memória *)
       let l = eval mem renv e1
       in let v = eval mem renv e2
       in (match (assign mem l v) with
@@ -305,10 +305,18 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
       if (v1 = VSkip) then eval mem renv e2 
       else raise(EvalError "A primeira expressão não foi corretamente avaliada para skip")
           
-  | New(e1) ->
+  (*| New(e1) ->
       let l = eval mem renv e1 in 
-      if (lookup mem l) = None then VSkip (* tem que arrumar a lógica de alocacao de endereco aqui *)
-      else raise (EvalError "O endereço em questão já está alocado na memória")
+      if (lookup mem l) = None then update mem l v
+      else raise (EvalError "O endereço em questão já está alocado na memória")*)
+  
+  (* se memória está vazia, endereço é 0, senão é o último endereço + 1 *)
+  | New(e1) -> (* altera a memória *)
+      let v = eval mem renv e1 in
+      (let l = (match mem with
+                  [] -> 0
+                | addr :: _ -> addr + 1)) in 
+                update mem l v; l (* retorna l *)
       
   | Skip -> VSkip
       
