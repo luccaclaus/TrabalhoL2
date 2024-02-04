@@ -16,7 +16,7 @@ type tipo =
   | TyFn of tipo * tipo
   | TyPair of tipo * tipo
   | TyRef of tipo
-  | TyUnit
+  | TyUnit 
 
 type ident = string
 
@@ -51,14 +51,14 @@ type valor =
   | VFalse
   | VPair of valor * valor
   | VClos  of ident * expr * renv
-  | VRclos of ident * ident * expr * renv
-  | Vl of expr
+  | VRclos of ident * ident * expr * renv 
   | VSkip 
+  | Vl
   | VNull
 and 
   renv = (ident * valor) list
     
-type mem = (valor * valor) list
+type mem = (int * valor) list
     
     
 (* funções polimórficas para ambientes e memória *)
@@ -201,7 +201,7 @@ let rec typeinfer (tenv:tenv) (e:expr) : tipo =
   | Seq(e1,e2) -> 
       (match typeinfer tenv e1 with
          TyUnit -> typeinfer tenv e2
-       | _ -> raise(TypeError "e1 precisa ser do tipo unit em SEQ"))
+       | _ -> raise(TypeError "e1 precisa ser do tipo unit em SEQ")) 
   
 (**+++++++++++++++++++++++++++++++++++++++++*)
 (*                 AVALIADOR                *)
@@ -308,27 +308,23 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
   (*| New(e1) ->
       let l = eval mem renv e1 in 
       if (lookup mem l) = None then update mem l v
-      else raise (EvalError "O endereço em questão já está alocado na memória")*)
+      else raise (EvalError "O endereço em questão já está alocado na memória")*) 
   
   (* se memória está vazia, endereço é 0, senão é o último endereço + 1 *)
-  (* altera a memória *)
-  | New(e1) -> 
-    let v = eval mem renv e1 in
-    let l = (match mem with
-          [] -> 0
-        | mem_vl :: mem_tl -> (match mem_vl with
-              addr :: value -> addr + 1
-            | _ raise (EvalError "A memória não está corretamente definida"))) in
-    update mem l v; l (* retorna l *)
-      
+  (* altera a memória *) 
+  | New(e1) ->
+      let v = eval mem renv e1 in
+      let l = (match mem with
+            [] -> 0
+          | (addr, _) :: mem_tl -> addr + 1) in
+      update mem l v; l (* retorna l *)
+  
   | Skip -> VSkip
 
   | Whl(e1,e2) ->
       let e1' = eval mem renv e1 in
-      if e1' then (eval mem renv e2); Whl(e1,e2) 
-      else Skip              
-
-            
+      if e1' then ((eval mem renv e2); Whl(e1,e2)) else VSkip 
+  
 (* função auxiliar que converte tipo para string *)
 
 let rec ttos (t:tipo) : string =
@@ -399,10 +395,3 @@ let e2 = Let("x", TyInt, Num 5, Var "foo")
 let e1  = Let("foo", TyFn(TyInt,TyInt), Fn("y", TyInt, Binop(Sum, Var "x", Var "y")), e2)
 
 let tst2 = Let("x", TyInt, Num(2), e1) 
-
-
-  
-    
-    
-              
-              
