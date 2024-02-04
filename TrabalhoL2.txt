@@ -311,12 +311,15 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
       else raise (EvalError "O endereço em questão já está alocado na memória")*)
   
   (* se memória está vazia, endereço é 0, senão é o último endereço + 1 *)
-  | New(e1) -> (* altera a memória *)
-      let v = eval mem renv e1 in
-      (let l = (match mem with
-                  [] -> 0
-                | (addr :: _) :: _ -> addr + 1)) in 
-                update mem l v; l (* retorna l *)
+  (* altera a memória *)
+  | New(e1) -> 
+    let v = eval mem renv e1 in
+    let l = (match mem with
+          [] -> 0
+        | mem_vl :: mem_tl -> (match mem_vl with
+              addr :: value -> addr + 1
+            | _ raise (EvalError "A memória não está corretamente definida"))) in
+    update mem l v; l (* retorna l *)
       
   | Skip -> VSkip
 
