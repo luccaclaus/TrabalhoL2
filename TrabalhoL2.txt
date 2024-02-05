@@ -53,12 +53,10 @@ type valor =
   | VClos  of ident * expr * renv
   | VRclos of ident * ident * expr * renv 
   | VSkip 
-  | Vl
-  | VNull
 and 
   renv = (ident * valor) list
     
-type mem = (int * valor) list
+type mem = (valor * valor) list
     
     
 (* funções polimórficas para ambientes e memória *)
@@ -67,6 +65,7 @@ let rec lookup a k =
   match a with
     [] -> None
   | (y,i) :: tl -> if (y=k) then Some i else lookup tl k 
+  
        
 let rec update a k i =
   (k,i) :: a   
@@ -321,7 +320,7 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
   | New(e1) ->
       let v = eval mem renv e1 in
       let l = (len mem) in
-      update mem l v; VNum l (* retorna l *)
+      let _ = update mem l v in VNum l 
   
   | Skip -> VSkip
     
@@ -344,6 +343,8 @@ let rec ttos (t:tipo) : string =
   | TyBool -> "bool"
   | TyFn(t1,t2)   ->  "("  ^ (ttos t1) ^ " --> " ^ (ttos t2) ^ ")"
   | TyPair(t1,t2) ->  "("  ^ (ttos t1) ^ " * "   ^ (ttos t2) ^ ")"
+  | TyRef(t1) -> "Ref " ^ (ttos t1)
+  | TyUnit -> "Unit" 
 
 (* função auxiliar que converte valor para string *)
 
@@ -356,6 +357,7 @@ let rec vtos (v: valor) : string =
       "(" ^ vtos v1 ^ "," ^ vtos v1 ^ ")"
   | VClos _ ->  "fn"
   | VRclos _ -> "fn"
+  | VSkip -> "skip" 
 
 (* principal do interpretador *)
 
@@ -406,3 +408,8 @@ let e2 = Let("x", TyInt, Num 5, Var "foo")
 let e1  = Let("foo", TyFn(TyInt,TyInt), Fn("y", TyInt, Binop(Sum, Var "x", Var "y")), e2)
 
 let tst2 = Let("x", TyInt, Num(2), e1) 
+    
+let teste1 = Let("x", TyRef TyInt, New (Num 3),
+                 Let("y", TyInt, Dref (Var "x"), 
+                     Seq(Asg(Var "x", Binop(Sum, Dref(Var "x"), Num 1)), 
+                         Binop(Sum, Var "y",  Dref (Var "x"))))) 
