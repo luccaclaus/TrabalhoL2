@@ -323,10 +323,17 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
       update mem l v; VNum l (* retorna l *)
   
   | Skip -> VSkip
+    
+  | Whl(e1, e2) ->
+      let rec loop () =
+        let e1' = eval mem renv e1 
+        in if e1' = VTrue then
+          let _ = eval mem renv e2 in loop ()
+        else
+          VSkip
+      in
+      loop ()
 
-  | Whl(e1,e2) ->
-      let e1' = eval mem renv e1 in
-      if e1' then ((eval mem renv e2); Whl(e1,e2)) else VSkip 
   
 (* função auxiliar que converte tipo para string *)
 
