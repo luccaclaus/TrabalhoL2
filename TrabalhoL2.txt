@@ -292,23 +292,17 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
   | LetRec _ -> raise BugParser 
 
   | Asg(e1,e2) -> (* altera a memória *)
-      let i = eval mem renv e1
-      in (match i with
-            VNum n -> let l = n in
-              let v = eval mem renv e2 in (match (assign mem l v) with
-                Some m -> VSkip
-              | None -> raise(EvalError "Identificador não alocado na memória"))
-          |  _ -> raise(EvalError "Enderço não codifica posição na memória")) 
+      let l = eval mem renv e1
+      in let v = eval mem renv e2 in (match (assign mem l v) with
+            Some m -> VSkip
+          | None -> raise(EvalError "Identificador não alocado na memória")) 
         
   | Dref(e1) -> 
-      let i = eval mem renv e1 
-      in (match i with
-            VNum n -> let l = n in
-              (match lookup mem l with
-                 Some v -> v
-               | None -> raise(EvalError "o endereço buscado não está alocado na memória"))
-          | _ -> raise (EvalError "Enderço não codifica posição na memória"))  
-      
+      let l = eval mem renv e1 
+      in (match lookup mem l with
+            Some v -> v
+          | None -> raise(EvalError "o endereço buscado não está alocado na memória"))
+  
   | Seq(e1,e2) -> 
       let v1 = eval mem renv e1 in 
       if (v1 = VSkip) then eval mem renv e2 
@@ -319,8 +313,8 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
   (* altera a memória *) 
   | New(e1) ->
       let v = eval mem renv e1 in
-      let l = (len mem) in
-      let _ = update mem l v in VNum l 
+      let l = (VNum (len mem)) in
+      let _ = (update mem l v) in l 
   
   | Skip -> VSkip
     
