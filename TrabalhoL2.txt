@@ -288,27 +288,28 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
   | LetRec _ -> raise BugParser 
 
   | Asg(e1,e2) -> (* altera a memória *)
-      let l = eval mem renv e1
-      in let v = eval mem renv e2
-      in (match (assign mem l v) with
-            Some m -> VSkip
-          | None -> raise(EvalError "Identificador não alocado na memória"))
+      let i = eval mem renv e1
+      in (match i with
+            VNum n -> let l = n in
+              let v = eval mem renv e2 in (match (assign mem l v) with
+                Some m -> VSkip
+              | None -> raise(EvalError "Identificador não alocado na memória"))
+          |  _ -> raise(EvalError "Enderço não codifica posição na memória")) 
         
   | Dref(e1) -> 
-      let l = eval mem renv e1 in 
-      (match lookup mem l with
-         Some i -> i
-       | None -> raise(EvalError "o endereço buscado não está alocado na memória"))
+      let i = eval mem renv e1 
+      in (match i with
+            VNum n -> let l = n in
+              (match lookup mem l with
+                 Some v -> v
+               | None -> raise(EvalError "o endereço buscado não está alocado na memória"))
+          | _ -> raise (EvalError "Enderço não codifica posição na memória"))  
       
   | Seq(e1,e2) -> 
       let v1 = eval mem renv e1 in 
       if (v1 = VSkip) then eval mem renv e2 
       else raise(EvalError "A primeira expressão não foi corretamente avaliada para skip")
-          
-  (*| New(e1) ->
-      let l = eval mem renv e1 in 
-      if (lookup mem l) = None then update mem l v
-      else raise (EvalError "O endereço em questão já está alocado na memória")*) 
+  
   
   (* se memória está vazia, endereço é 0, senão é o último endereço + 1 *)
   (* altera a memória *) 
