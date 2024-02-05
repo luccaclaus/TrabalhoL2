@@ -74,7 +74,9 @@ let rec update a k i =
 let rec assign m i v =
   match m with
     [] -> None (*qlqr coisa so retornar a memoria*)
-  | (i_mem,v_mem) :: tl -> if (i=i_mem) then Some ((i, v) :: m) else assign tl i v
+  | (i_mem,v_mem) :: tl -> if (i=i_mem) then Some ((i, v) :: m) else assign tl i v 
+          
+          
 
 (* exceções que não devem ocorrer  *)
 
@@ -318,7 +320,7 @@ let rec eval (mem: mem) (renv:renv) (e:expr) : valor =
       let l = (match mem with
             [] -> 0
           | (addr, _) :: mem_tl -> addr + 1) in
-      update mem l v; l (* retorna l *)
+      update mem l v; VNum l (* retorna l *)
   
   | Skip -> VSkip
 
